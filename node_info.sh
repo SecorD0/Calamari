@@ -117,27 +117,25 @@ main() {
 		local moniker=`sudo journalctl -u "$software_name" | grep Node | tail -1 | grep -oPm1 "(?<=Node name: )([^%]+)(?=$)"`
 		local service_file="true"
 	fi
-	
-	p_port=9933
-	latest_block_height=`api_request system_syncState $p_port | jq -r ".result.currentBlock"`
-	if [ ! -n "$latest_block_height" ]; then
-		if [ "$service_file" = "true" ]; then
-			p_port=`sudo systemctl cat "$software_name" | grep rpc-port | head -1 | grep -oE '[0-9]+'`
-		else
-			p_port=`docker inspect "$software_name" | jq ".[0].Args" | grep -A1 rpc-port | grep -oE '[0-9]+' | head -1`
-		fi
+
+	if [ "$service_file" = "true" ]; then
+		p_port=`sudo systemctl cat "$software_name" | grep rpc-port | head -1 | grep -oE '[0-9]+'`
+	else
+		p_port=`docker inspect "$software_name" | jq ".[0].Args" | grep -A1 rpc-port | grep -oE '[0-9]+' | head -1`
 	fi
-	r_port=9934
-	latest_block_height=`api_request system_syncState $r_port | jq -r ".result.currentBlock"`
-	if [ ! -n "$latest_block_height" ]; then
-		if [ "$service_file" = "true" ]; then
-			r_port=`sudo systemctl cat "$software_name" | grep rpc-port | tail -1 | grep -oE '[0-9]+'`
-		else
-			r_port=`docker inspect "$software_name" | jq ".[0].Args" | grep -A1 rpc-port | grep -oE '[0-9]+' | tail -1`
-		fi
-		if [ "$r_port" -eq "$p_port" ]; then
-			r_port=0
-		fi
+	if [ ! -n "$p_port" ]; then
+		p_port=9933
+	fi
+
+	if [ "$service_file" = "true" ]; then
+		r_port=`sudo systemctl cat "$software_name" | grep rpc-port | tail -1 | grep -oE '[0-9]+'`
+	else
+		r_port=`docker inspect "$software_name" | jq ".[0].Args" | grep -A1 rpc-port | grep -oE '[0-9]+' | tail -1`
+	fi
+	if [ "$r_port" -eq "$p_port" ]; then
+		r_port=0
+	elif [ ! -n "$r_port" ]; then
+		r_port=9934
 	fi
 
 	local node_version=`api_request system_version $p_port | jq -r ".result"`
